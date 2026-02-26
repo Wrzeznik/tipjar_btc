@@ -3,52 +3,166 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Send BTC</title>
+<title>Bitcoin Tip Sender — OP_NET Style</title>
+
 <style>
-body { font-family: Arial; background:#0d0d0d; color:#eee; text-align:center; padding:40px; }
-.box { background:#1a1a1a; padding:20px; border-radius:8px; display:inline-block; width:300px; }
-input { width:90%; padding:10px; margin-top:10px; border-radius:4px; border:none; }
-button {
-  margin-top:15px; padding:10px 20px;
-  background:#ff9900; border:none; color:black;
-  font-weight:bold; cursor:pointer; border-radius:4px;
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(180deg, #0a0a0a, #1a0d00);
+  color: #eee;
+  text-align: center;
+  padding: 40px;
 }
-button:hover { background:#ffaa22; }
+
+.box {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 10px;
+  display: inline-block;
+  width: 340px;
+  box-shadow: 0 0 20px #ff880020;
+  border: 1px solid #333;
+}
+
+input {
+  width: 90%;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 6px;
+  border: none;
+  background: #0f0f0f;
+  color: #ff8800;
+  font-size: 16px;
+}
+
+button {
+  margin-top: 15px;
+  padding: 12px 20px;
+  background: #ff8800;
+  border: none;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 16px;
+  width: 90%;
+}
+
+button:hover {
+  background: #ffaa33;
+}
+
+#qr { margin-top: 20px; }
+
+/* progress bar */
+.progress {
+  width: 100%;
+  background: #333;
+  border-radius: 4px;
+  height: 10px;
+  margin-top: 20px;
+}
+
+.bar {
+  height: 10px;
+  background: #ff8800;
+  width: 0%;
+  border-radius: 4px;
+  transition: width 1s ease-out;
+}
+
+.msg {
+  min-height: 20px;
+  margin-top: 15px;
+  font-size: 14px;
+  color: #ccc;
+}
 </style>
+
 </head>
 <body>
-<h1>Send Bitcoin</h1>
-<p>Enter BTC address and amount. Then click SEND.</p>
+
+<h1 style="color:#ff8800;">Bitcoin Tip Sender</h1>
+<p>Enter BTC address → validate → generate QR → send tip.</p>
 
 <div class="box">
-  <input id="addr" type="text" placeholder="BTC address (bc1...)" />
+  <input id="addr" placeholder="Bitcoin address (bc1...)" />
   <input id="amt" type="number" step="0.00000001" placeholder="Amount BTC" />
+
+  <button onclick="validateAddr()">Validate Address</button>
+  <button onclick="copyAddr()">Copy Address</button>
+  <button onclick="generateQR()">Generate QR</button>
   <button onclick="sendBTC()">Send BTC</button>
-  <p id="out" style="margin-top:15px; color:#ccc;"></p>
+
+  <div class="progress"><div id="bar" class="bar"></div></div>
+
+  <p id="msg" class="msg"></p>
+  <img id="qr" width="200" />
 </div>
 
 <script>
-function sendBTC(){
+// Validate BTC address using regex
+function validateAddr() {
+  const addr = document.getElementById('addr').value.trim();
+  const reg = /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{20,}$/;
+
+  if (reg.test(addr)) {
+    msg("✔ Valid Bitcoin address");
+    bar(40);
+    return true;
+  } else {
+    msg("❌ Invalid address");
+    bar(10);
+    return false;
+  }
+}
+
+// Copy to clipboard
+function copyAddr() {
+  const a = document.getElementById('addr').value.trim();
+  if (!a) return msg("Enter address first");
+  navigator.clipboard.writeText(a);
+  msg("Copied!");
+  bar(60);
+}
+
+// Generate QR using Google Chart API
+function generateQR() {
+  if (!validateAddr()) return;
+
+  const a = document.getElementById('addr').value.trim();
+  const url = "https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=" + encodeURIComponent(a);
+
+  document.getElementById('qr').src = url;
+  msg("QR Generated");
+  bar(80);
+}
+
+// Send BTC using BIP21 link
+function sendBTC() {
+  if (!validateAddr()) return;
+
   const a = document.getElementById('addr').value.trim();
   const amt = document.getElementById('amt').value.trim();
 
-  if (!a || a.length < 10) {
-    document.getElementById('out').innerText = "Enter a valid BTC address.";
-    return;
-  }
-
   if (!amt || parseFloat(amt) <= 0) {
-    document.getElementById('out').innerText = "Enter a valid amount.";
+    msg("Enter valid amount");
     return;
   }
 
-  const url = `bitcoin:${a}?amount=${amt}`;
+  const link = `bitcoin:${a}?amount=${amt}`;
+  msg("Opening wallet…");
+  bar(100);
+  window.location.href = link;
+}
 
-  document.getElementById('out').innerHTML =
-    `Opening wallet link:<br><code>${url}</code>`;
+// UI helpers
+function msg(t) {
+  document.getElementById('msg').innerHTML = t;
+}
 
-  // Open BIP21 link → wallet handles sending
-  window.location.href = url;
+function bar(p) {
+  document.getElementById('bar').style.width = p + "%";
 }
 </script>
 
